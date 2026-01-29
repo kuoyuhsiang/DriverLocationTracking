@@ -56,3 +56,37 @@ graph LR
 
     S1 & S2 --- DB[(資料庫 Database)]
 ```
+## 3th version
+
+**1. 服務拆分**
+
+如果服務沒有區分混在一起，當司機流量爆增時，可能會佔用所有 CPU ，導致乘客要查詢根本跑不動，所以就要進一步去考慮CQRS(命令查詢職責分離)，因為司機端屬於寫入密集，而乘客端屬於運算密集，所以可以拆成兩類服務 
+
+**2. 司機端連線方式選擇**
+* HTTP POST：司機每 2 秒發一次 Request。所以每 2 秒都需要進行 TCP 三向交握（Handshake），消耗大量的 CPU 資源來處理網路封包。
+
+* WebSocket：司機端只需在開始載客時建立一次連線（Handshake），之後的 GPS 數據都能在同一個長連接中傳輸，標頭極小（僅幾個 Bytes），大幅節省頻寬與 CPU 負載。
+
+* gRPC：二進位傳輸，代表同樣的 GPS 數據，它傳輸的封包體積更小，處理速度更快。**我選擇它**
+
+
+    > P.S. Uber 實際是採用 gRPC 連線，它本身是走 HTTP/2，所以支援雙向流。這讓伺服器可以在接收司機定位的同時，同時也可以推播新訂單給司機。
+
+```mermaid
+graph LR
+    subgraph Clients
+        Driver[司機端 Driver App]
+        Rider[乘客端 Rider App]
+    end
+
+    %% 司機走 LB 追求高吞吐量
+    Driver -- "高頻更新 gRPC streaming" --> LB[Load Balancer]
+    LB --> S1[ Tracking Service A]
+    LB --> S2[ Tracking Service B]
+
+    %% 乘客走 Gateway 追求安全控管
+    Rider -- "查詢請求 (HTTPS)" --> GW[API Gateway]
+    GW --> S3[ Query Service A]
+
+    S1 & S2 & S3 --- DB[(資料庫 Database)]
+```
