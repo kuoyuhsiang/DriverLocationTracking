@@ -90,3 +90,58 @@ graph LR
 
     S1 & S2 & S3 --- DB[(資料庫 Database)]
 ```
+
+## 4th version
+
+**資料庫的選擇**
+
+* MySQL
+  * 優點 : 適合簡單的經緯度儲存
+  * 缺點 : 每秒 1,500 次寫入會對磁碟 I/O 負擔很大，頻繁更新又會一直 row lock
+  
+* PostgreSQL + PostGIS
+  * 優點 : PostGIS 擴充功能的地理空間運算功能完整，關聯式資料庫 ACID
+  * 缺點 : 同樣是高頻寫入對對磁碟 I/O 負擔
+
+* Redis Geo
+  * 優點 : 讀寫吞吐量極高，內建 GeoHash 演算法效率高
+  * 缺點 : 記憶體成本較高
+
+
+> Uber 自研的空間索引系統 + H3（Hexagonal Grid）
+不採用 Redis Geo 原因 : 1.超高頻率位置更新（每秒百萬級）與極低延遲的要求 2.精準度不均
+
+```mermaid
+graph LR
+    subgraph Client
+        Driver[司機端 Driver App]
+        Rider[乘客端 Rider App]
+    end
+
+    subgraph 查詢層
+        GW[API Gateway]
+        QS[ Query Service]
+    end
+
+    subgraph 數據導入層
+        LB[Load Balancer] 
+        TC[ Tracking Service ]
+    end
+
+    subgraph Storage [儲存層]
+        Redis[(Redis Cluster <br/>Geo Index)]
+        DB[(PostgreSQL + PostGIS <br/>History Data)]
+    end
+
+    %% 司機走 LB 追求高吞吐量
+    Driver -- "高頻更新 gRPC streaming" --> LB[Load Balancer]
+    LB --> TC[ Tracking Service ]
+
+    %% 乘客走 Gateway 追求安全控管
+    Rider -- "查詢請求 (HTTPS)" --> GW[API Gateway]
+    GW --> QS[ Query Service]
+
+    TC -- "GEOADD (即時更新)" --> Redis
+    QS -- "GEORADIUS (附近搜尋)" --> Redis
+    TC -- "同步歷史座標數據" --> DB
+```
