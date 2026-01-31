@@ -1,4 +1,5 @@
-# Init version
+# Question2. Driver Location Tracking API Design
+## Init version
 **A. 司機端**
 * 大約有 3,000 名司機在線 
 * 每 2 秒會發送一次 GPS 數據 
@@ -19,7 +20,7 @@ graph LR
     Rider[乘客端 Rider App] -- "查詢附近司機" --> Service
     Service -- "讀取/寫入" --> DB[(資料庫 Database)]
 ```
-# 2th version
+## 2th version
 
 ### 細部元件
 * **Load Balancer (負載平衡器)**：它是系統的「分流器」。當司機們發送 GPS 數據時，負載平衡器會把這些請求平均分配給後端多台 Service 。
@@ -51,7 +52,7 @@ graph LR
 
     S1 & S2 --- DB[(資料庫 Database)]
 ```
-# 3th version
+## 3th version
 
 **1. 服務拆分**
     
@@ -84,7 +85,7 @@ graph LR
     S1 & S2 & S3 --- DB[(資料庫 Database)]
 ```
 
-# 4th version
+## 4th version
 
 **資料庫的選擇**
 
@@ -136,7 +137,7 @@ graph LR
     TC -- "同步歷史座標數據" --> DB
 ```
 
-# 5th version
+## 5th version
 
 **傳統資料庫大流量寫入問題**    
 
@@ -194,9 +195,9 @@ graph LR
 
 ```
 
-# Analysis
+## Analysis
 
-## 1. API considerations
+### 1. API considerations
 
 * **Load Handling (負載處理)**
 
@@ -217,7 +218,7 @@ graph LR
     * **效果** : 查詢延遲通常小於 10ms，遠低於傳統資料庫的秒級查詢。    
     
 
-## 2. Performance, scalability, and fault tolerance
+### 2. Performance, scalability, and fault tolerance
 
 * **Performance (效能)**
     * **Kafka**
